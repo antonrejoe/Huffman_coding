@@ -43,7 +43,6 @@ private:
     unordered_map<char, string> codes;
     unordered_map<string, char> reverse_mapping;
 
-    // Memory cleanup method
     void clearHeap()
     {
         while (!heap.empty())
@@ -191,13 +190,8 @@ public:
 
     string removePadding(const std::string &paddedEncodedText)
     {
-        // Extract first 8 bits representing padding information
         std::string paddedInfo = paddedEncodedText.substr(0, 8);
-
-        // Convert binary padding info to integer
         int extraPadding = std::bitset<8>(paddedInfo).to_ulong();
-
-        // Remove padding info and extra padding bits
         std::string encodedText = paddedEncodedText.substr(8);
         encodedText = encodedText.substr(0, encodedText.length() - extraPadding);
 
@@ -212,8 +206,6 @@ public:
         for (char bit : encodedText)
         {
             currentCode += bit;
-
-            // Check if current code exists in reverse mapping
             if (reverse_mapping.find(currentCode) != reverse_mapping.end())
             {
                 char character = reverse_mapping[currentCode];
@@ -227,12 +219,10 @@ public:
 
     string decompress(const std::string &inputPath)
     {
-        // Generate output path
         std::filesystem::path inputFilePath(inputPath);
         std::string filename = inputFilePath.stem().string();
         std::string outputPath = "decoded/" + filename + "_decompressed.txt";
 
-        // Open input binary file
         std::ifstream inputFile(inputPath, std::ios::binary);
         std::ofstream outputFile(outputPath);
 
@@ -241,21 +231,17 @@ public:
             throw std::runtime_error("Unable to open files");
         }
 
-        // Read file byte by byte and convert to bit string
         std::string bitString;
         unsigned char byte;
         while (inputFile.read(reinterpret_cast<char *>(&byte), 1))
         {
-            // Convert each byte to 8-bit binary string
             std::bitset<8> bits(byte);
             bitString += bits.to_string();
         }
 
-        // Remove padding and decode
         std::string encodedText = removePadding(bitString);
         std::string decompressedText = decodeText(encodedText);
 
-        // Write decompressed text
         outputFile << decompressedText;
 
         std::cout << "Decompressed" << std::endl;
@@ -264,14 +250,10 @@ public:
 
     unordered_map<char, double> calculateSymbolProbabilities(const string &text)
     {
-        // First, get the frequency dictionary
         unordered_map<char, int> frequency = makeFrequencyDict(text);
         unordered_map<char, double> probabilities;
 
-        // Total number of characters
         int totalChars = text.length();
-
-        // Calculate probability for each character
         for (const auto &[ch, freq] : frequency)
         {
             probabilities[ch] = static_cast<double>(freq) / totalChars;
@@ -280,25 +262,8 @@ public:
         return probabilities;
     }
 
-    // Optional: Method to print probabilities
-    void printSymbolProbabilities(const unordered_map<char, double> &probabilities)
+    unordered_map<char, string> getCodeWords()
     {
-        cout << "Symbol Probabilities:\n";
-        for (const auto &[ch, prob] : probabilities)
-        {
-            // Handle special characters and print probability
-            if (ch == '\n')
-            {
-                cout << "\\n: " << prob * 100 << "%\n";
-            }
-            else if (ch == ' ')
-            {
-                cout << "' ': " << prob * 100 << "%\n";
-            }
-            else
-            {
-                cout << ch << ": " << prob * 100 << "%\n";
-            }
-        }
+        return codes;
     }
 };
