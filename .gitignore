@@ -1,2 +1,5 @@
 *.out
 gnuplot-iostream/*
+main
+*.csv
+*.png
