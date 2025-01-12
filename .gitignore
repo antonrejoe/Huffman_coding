@@ -3,3 +3,4 @@ gnuplot-iostream/*
 main
 *.csv
 *.png
+.vscode/*
