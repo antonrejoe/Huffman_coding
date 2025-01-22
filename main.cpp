@@ -157,3 +157,5 @@ int main()
     std::cout << "\nCompression analysis completed.\n";
     return 0;
 }
+
+// g++ -I gnuplot-iostream/ main.cpp -o main -lboost_iostreams -lboost_system -lboost_filesystem && ./main

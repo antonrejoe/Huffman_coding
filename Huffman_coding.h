@@ -8,6 +8,9 @@
 #include <fstream>
 #include <bitset>
 #include <stdexcept>
+#include <algorithm>
+#include <cctype>
+
 using namespace std;
 
 class Huffman
@@ -21,8 +24,7 @@ public:
         unique_ptr<HeapNode> left;
         unique_ptr<HeapNode> right;
 
-        HeapNode(char ch, int freq) : character(ch),
-                                      frequency(freq) {}
+        HeapNode(char ch, int freq) : character(ch), frequency(freq) {}
 
         struct compare
         {
@@ -35,11 +37,7 @@ public:
 
 private:
     string path;
-    priority_queue<
-        HeapNode *,
-        vector<HeapNode *>,
-        HeapNode::compare>
-        heap;
+    priority_queue<HeapNode *, vector<HeapNode *>, HeapNode::compare> heap;
     unordered_map<char, string> codes;
     unordered_map<string, char> reverse_mapping;
 
@@ -52,7 +50,7 @@ private:
         }
     }
 
-    unordered_map<char, int> makeFrequencyDict(const string &text)
+    unordered_map<char, int> makeFrequencyDict(const string &text) const
     {
         unordered_map<char, int> frequency;
         for (char ch : text)
@@ -112,17 +110,17 @@ private:
         makeCodesHelper(root, "");
     }
 
-    string getEncodedText(const string &text)
+    string getEncodedText(const string &text) const
     {
         string encodedText;
         for (char ch : text)
         {
-            encodedText += codes[ch];
+            encodedText += codes.at(ch);
         }
         return encodedText;
     }
 
-    string padEncodedText(const string &encodedText)
+    string padEncodedText(const string &encodedText) const
     {
         int extraPadding = 8 - (encodedText.length() % 8);
         string paddedText = encodedText;
@@ -136,42 +134,65 @@ private:
         return paddingInfo.to_string() + paddedText;
     }
 
-    vector<uint8_t> getByteArray(const string &paddedEncodedText)
+    vector<uint8_t> getByteArray(const string &paddedEncodedText) const
     {
         vector<uint8_t> byteArray;
         for (size_t i = 0; i < paddedEncodedText.length(); i += 8)
         {
             bitset<8> byte(paddedEncodedText.substr(i, 8));
-            byteArray.push_back(byte.to_ulong());
+            byteArray.push_back(static_cast<uint8_t>(byte.to_ulong()));
         }
         return byteArray;
     }
 
 public:
-    Huffman(const string &inputPath) : path(inputPath) {}
+    explicit Huffman(const string &inputPath) : path(inputPath) {}
 
     ~Huffman()
     {
         clearHeap();
     }
-
     string compress()
     {
         filesystem::path inputPath(path);
         string filename = inputPath.stem().string();
         string outputPath = "encoded/" + filename + ".bin";
 
-        ifstream inputFile(path);
-        ofstream outputFile(outputPath, ios::binary);
+        ifstream inputFile(path, ios::binary);        // Open input file in binary mode
+        ofstream outputFile(outputPath, ios::binary); // Open output file in binary mode
 
-        if (!inputFile || !outputFile)
+        if (!inputFile)
         {
-            throw runtime_error("Unable to open files");
+            throw runtime_error("Unable to open input file: " + path);
         }
 
-        string text((istreambuf_iterator<char>(inputFile)),
-                    istreambuf_iterator<char>());
+        if (!outputFile)
+        {
+            throw runtime_error("Unable to create output file: " + outputPath);
+        }
 
+        // Read the entire file into a string
+        string text((istreambuf_iterator<char>(inputFile)), istreambuf_iterator<char>());
+
+        // Debug: Check text length before filtering
+        cout << "Original text length: " << text.length() << endl;
+
+        // Filter out non-printable ASCII characters
+        text.erase(remove_if(text.begin(), text.end(), [](unsigned char c)
+                             {
+                                 return !isascii(c) || !isprint(c); // Keep only printable ASCII characters
+                             }),
+                   text.end());
+
+        // Debug: Check text length after filtering
+        cout << "Filtered text length: " << text.length() << endl;
+
+        if (text.empty())
+        {
+            throw runtime_error("Filtered text is empty. Ensure the input file contains valid printable ASCII characters.");
+        }
+
+        // Proceed with frequency calculation, heap creation, and encoding
         auto frequency = makeFrequencyDict(text);
         makeHeap(frequency);
 
@@ -184,31 +205,30 @@ public:
 
         outputFile.write(reinterpret_cast<char *>(byteArray.data()), byteArray.size());
 
-        cout << "Compressed" << endl;
+        cout << "Compression successful: " << outputPath << endl;
         return outputPath;
     }
 
-    string removePadding(const std::string &paddedEncodedText)
+    string removePadding(const string &paddedEncodedText) const
     {
-        std::string paddedInfo = paddedEncodedText.substr(0, 8);
-        int extraPadding = std::bitset<8>(paddedInfo).to_ulong();
-        std::string encodedText = paddedEncodedText.substr(8);
+        string paddingInfo = paddedEncodedText.substr(0, 8);
+        int extraPadding = bitset<8>(paddingInfo).to_ulong();
+        string encodedText = paddedEncodedText.substr(8);
         encodedText = encodedText.substr(0, encodedText.length() - extraPadding);
-
         return encodedText;
     }
 
-    string decodeText(const std::string &encodedText)
+    string decodeText(const string &encodedText) const
     {
-        std::string currentCode;
-        std::string decodedText;
+        string currentCode;
+        string decodedText;
 
         for (char bit : encodedText)
         {
             currentCode += bit;
             if (reverse_mapping.find(currentCode) != reverse_mapping.end())
             {
-                char character = reverse_mapping[currentCode];
+                char character = reverse_mapping.at(currentCode);
                 decodedText += character;
                 currentCode.clear();
             }
@@ -217,40 +237,45 @@ public:
         return decodedText;
     }
 
-    string decompress(const std::string &inputPath)
+    string decompress(const string &inputPath)
     {
-        std::filesystem::path inputFilePath(inputPath);
-        std::string filename = inputFilePath.stem().string();
-        std::string outputPath = "decoded/" + filename + "_decompressed.txt";
+        filesystem::path inputFilePath(inputPath);
+        string filename = inputFilePath.stem().string();
+        string outputPath = "decoded/" + filename + "_decompressed.txt";
 
-        std::ifstream inputFile(inputPath, std::ios::binary);
-        std::ofstream outputFile(outputPath);
+        ifstream inputFile(inputPath, ios::binary);
+        ofstream outputFile(outputPath);
 
-        if (!inputFile || !outputFile)
+        if (!inputFile)
         {
-            throw std::runtime_error("Unable to open files");
+            throw runtime_error("Unable to open input file: " + inputPath);
         }
 
-        std::string bitString;
+        if (!outputFile)
+        {
+            throw runtime_error("Unable to create output file: " + outputPath);
+        }
+
+        string bitString;
         unsigned char byte;
         while (inputFile.read(reinterpret_cast<char *>(&byte), 1))
         {
-            std::bitset<8> bits(byte);
+            bitset<8> bits(byte);
             bitString += bits.to_string();
         }
 
-        std::string encodedText = removePadding(bitString);
-        std::string decompressedText = decodeText(encodedText);
+        string encodedText = removePadding(bitString);
+        string decompressedText = decodeText(encodedText);
 
         outputFile << decompressedText;
 
-        std::cout << "Decompressed" << std::endl;
+        cout << "Decompression successful: " << outputPath << endl;
         return outputPath;
     }
 
-    unordered_map<char, double> calculateSymbolProbabilities(const string &text)
+    unordered_map<char, double> calculateSymbolProbabilities(const string &text) const
     {
-        unordered_map<char, int> frequency = makeFrequencyDict(text);
+        auto frequency = makeFrequencyDict(text);
         unordered_map<char, double> probabilities;
 
         int totalChars = text.length();
@@ -262,7 +287,7 @@ public:
         return probabilities;
     }
 
-    unordered_map<char, string> getCodeWords()
+    unordered_map<char, string> getCodeWords() const
     {
         return codes;
     }
