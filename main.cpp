@@ -86,17 +86,11 @@ void exportMetricsToCSV(const std::vector<CompressionMetrics> &metrics)
     csvFile.close();
     std::cout << "\nMetrics exported to compression_metrics.csv\n";
 }
-
-// Function to print detailed metrics to the console
 void printDetailedMetrics(const std::vector<CompressionMetrics> &metrics)
 {
     for (const auto &metric : metrics)
     {
-        std::cout << "\nFile: " << metric.filename << "\n";
-        std::cout << "Original Size: " << metric.originalSize << " bytes\n";
-        std::cout << "Compressed Size: " << metric.compressedSize << " bytes\n";
-        std::cout << "Compression Ratio: " << metric.compressionRatio * 100.0 << "%\n";
-        std::cout << "Time Taken: " << metric.timeTaken << " seconds\n";
+        std::cout << "Metrics for file: " << metric.filename << "\n";
         std::cout << "Symbol Probabilities:\n";
 
         for (const auto &[ch, prob] : metric.symbolProbabilities)
@@ -104,21 +98,151 @@ void printDetailedMetrics(const std::vector<CompressionMetrics> &metrics)
             std::string charRepr;
             switch (ch)
             {
+            // Whitespace characters
             case '\n':
-                charRepr = "\\n";
+                charRepr = "\\n (Newline)";
                 break;
             case '\t':
-                charRepr = "\\t";
+                charRepr = "\\t (Tab)";
+                break;
+            case '\r':
+                charRepr = "\\r (Carriage Return)";
+                break;
+            case '\f':
+                charRepr = "\\f (Form Feed)";
+                break;
+            case '\v':
+                charRepr = "\\v (Vertical Tab)";
                 break;
             case ' ':
                 charRepr = "SPACE";
                 break;
+
+            // Control characters
+            case '\b':
+                charRepr = "\\b (Backspace)";
+                break;
+            case '\a':
+                charRepr = "\\a (Bell/Alert)";
+                break;
+            case '\0':
+                charRepr = "\\0 (Null)";
+                break;
+            case '\x1B':
+                charRepr = "ESC (Escape)";
+                break;
+
+            // Punctuation and special symbols
+            case '\\':
+                charRepr = "\\\\ (Backslash)";
+                break;
+            case '\'':
+                charRepr = "\\' (Single Quote)";
+                break;
+            case '\"':
+                charRepr = "\\\" (Double Quote)";
+                break;
+            case '`':
+                charRepr = "` (Backtick)";
+                break;
+
+            // Brackets and braces
+            case '(':
+                charRepr = "( (Open Parenthesis)";
+                break;
+            case ')':
+                charRepr = ") (Close Parenthesis)";
+                break;
+            case '[':
+                charRepr = "[ (Open Square Bracket)";
+                break;
+            case ']':
+                charRepr = "] (Close Square Bracket)";
+                break;
+            case '{':
+                charRepr = "{ (Open Curly Brace)";
+                break;
+            case '}':
+                charRepr = "} (Close Curly Brace)";
+                break;
+
+            // Mathematical and logical symbols
+            case '+':
+                charRepr = "+ (Plus)";
+                break;
+            case '-':
+                charRepr = "- (Minus)";
+                break;
+            case '*':
+                charRepr = "* (Asterisk)";
+                break;
+            case '/':
+                charRepr = "/ (Forward Slash)";
+                break;
+            case '%':
+                charRepr = "% (Percent)";
+                break;
+            case '=':
+                charRepr = "= (Equals)";
+                break;
+            case '<':
+                charRepr = "< (Less Than)";
+                break;
+            case '>':
+                charRepr = "> (Greater Than)";
+                break;
+            case '&':
+                charRepr = "& (Ampersand)";
+                break;
+            case '|':
+                charRepr = "| (Vertical Bar)";
+                break;
+            case '^':
+                charRepr = "^ (Caret)";
+                break;
+            case '~':
+                charRepr = "~ (Tilde)";
+                break;
+
+            // Punctuation
+            case '.':
+                charRepr = ". (Period/Dot)";
+                break;
+            case ',':
+                charRepr = ", (Comma)";
+                break;
+            case ':':
+                charRepr = ": (Colon)";
+                break;
+            case ';':
+                charRepr = "; (Semicolon)";
+                break;
+            case '!':
+                charRepr = "! (Exclamation)";
+                break;
+            case '?':
+                charRepr = "? (Question Mark)";
+                break;
+
             default:
-                charRepr = std::string(1, ch);
+                if (std::iscntrl(ch))
+                {
+                    // For other control characters, show hex representation
+                    std::stringstream ss;
+                    ss << "\\x" << std::hex << static_cast<int>(static_cast<unsigned char>(ch))
+                       << " (Control Character)";
+                    charRepr = ss.str();
+                }
+                else
+                {
+                    charRepr = std::string(1, ch);
+                }
             }
-            std::cout << "  '" << charRepr << "': " << prob * 100 << "%\n";
+
+            // Print with percentage, rounded to 2 decimal places
+            printf("  '%-20s': %.2f%%\n", charRepr.c_str(), prob * 100);
         }
-        std::cout << "------------------------------------------\n";
+        std::cout << "\n"; // Separate metrics for different files
     }
 }
 
